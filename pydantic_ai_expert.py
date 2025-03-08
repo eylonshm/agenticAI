@@ -15,6 +15,7 @@ load_dotenv()
 
 llm = os.getenv('LLM_MODEL', 'gpt-4o-mini')
 model = OpenAIModel(llm)
+website_name = os.getenv('DOCS_WEBSITE_NAME')
 
 logfire.configure(send_to_logfire='if-token-present')
 
@@ -23,9 +24,9 @@ class PydanticAIDeps:
     supabase: Client
     openai_client: AsyncOpenAI
 
-system_prompt = """
-You are an expert at Tamagui (with react native and expo) - a UI kit framework that you have access to all the documentation to,
-including examples, an API reference, and other resources to help you build Tamagui with react native ane expom and modify project configurations.
+system_prompt = f"""
+You are an expert at {website_name} (with react native and expo) - a UI kit framework that you have access to all the documentation to,
+including examples, an API reference, and other resources to help you build {website_name} with react native ane expom and modify project configurations.
 
 Your only job is to assist with this and you don't answer other questions besides describing what you are able to do.
 
@@ -78,7 +79,7 @@ async def retrieve_relevant_documentation(ctx: RunContext[PydanticAIDeps], user_
             {
                 'query_embedding': query_embedding,
                 'match_count': 5,
-                'filter': {'source': 'tamagui_docs'}
+                'filter': {'source': website_name + '_docs'}
             }
         ).execute()
         
@@ -104,17 +105,17 @@ async def retrieve_relevant_documentation(ctx: RunContext[PydanticAIDeps], user_
 
 @pydantic_ai_expert.tool
 async def list_documentation_pages(ctx: RunContext[PydanticAIDeps]) -> List[str]:
-    """
-    Retrieve a list of all available Tamagui documentation pages.
+    f"""
+    Retrieve a list of all available {website_name} documentation pages.
     
     Returns:
         List[str]: List of unique URLs for all documentation pages
     """
     try:
-        # Query Supabase for unique URLs where source is tamagui_docs
+        # Query Supabase for unique URLs where source is {website_name}_docs
         result = ctx.deps.supabase.from_('site_pages') \
             .select('url') \
-            .eq('metadata->>source', 'tamagui_docs') \
+            .eq('metadata->>source', website_name + '_docs') \
             .execute()
         
         if not result.data:
@@ -145,7 +146,7 @@ async def get_page_content(ctx: RunContext[PydanticAIDeps], url: str) -> str:
         result = ctx.deps.supabase.from_('site_pages') \
             .select('title, content, chunk_number') \
             .eq('url', url) \
-            .eq('metadata->>source', 'tamagui_docs') \
+            .eq('metadata->>source', website_name + '_docs') \
             .order('chunk_number') \
             .execute()
         

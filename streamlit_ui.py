@@ -8,6 +8,7 @@ import logfire
 from supabase import Client
 from openai import AsyncOpenAI
 
+
 # Import all the message part classes
 from pydantic_ai.messages import (
     ModelMessage,
@@ -21,6 +22,8 @@ from pydantic_ai_expert import pydantic_ai_expert, PydanticAIDeps
 # Load environment variables
 from dotenv import load_dotenv
 load_dotenv()
+
+website_name = os.getenv('DOCS_WEBSITE_NAME')
 
 openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 supabase: Client = Client(
@@ -99,8 +102,8 @@ async def run_agent_with_streaming(user_input: str):
 
 
 async def main():
-    st.title("Tamagui Agentic RAG")
-    st.write("Ask any question about Tamagui, the hidden truths of the beauty of this framework lie within.")
+    st.title(f"{website_name} Agentic RAG")
+    st.write(f"Ask any question about {website_name}, the hidden truths of the beauty of this framework lie within.")
 
     # Initialize chat history in session state if not present
     if "messages" not in st.session_state:
@@ -115,7 +118,7 @@ async def main():
                 display_message_part(part)
 
     # Chat input for the user
-    user_input = st.chat_input("What questions do you have about Tamagui?")
+    user_input = st.chat_input(f"What questions do you have about {website_name}?")
 
     if user_input:
         # We append a new request to the conversation explicitly

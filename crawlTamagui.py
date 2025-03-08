@@ -15,6 +15,8 @@ from supabase import create_client, Client
 
 load_dotenv()
 
+SITEMAP_URL = "https://www.xml-sitemaps.com/download/tamagui.dev-2d537934d/sitemap.xml?view=1"
+
 # Initialize OpenAI and Supabase clients
 openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 supabase: Client = create_client(
@@ -121,7 +123,7 @@ async def process_chunk(chunk: str, chunk_number: int, url: str) -> ProcessedChu
     
     # Create metadata
     metadata = {
-        "source": "tamagui_docs",
+        "source": os.getenv("DOCS_WEBSITE_NAME") + "_docs",
         "chunk_size": len(chunk),
         "crawled_at": datetime.now(timezone.utc).isoformat(),
         "url_path": urlparse(url).path
@@ -214,9 +216,8 @@ async def crawl_parallel(urls: List[str], max_concurrent: int = 5):
 
 def get_pydantic_ai_docs_urls() -> List[str]:
     """Get URLs from Pydantic AI docs sitemap."""
-    sitemap_url = "https://www.xml-sitemaps.com/download/tamagui.dev-2d537934d/sitemap.xml?view=1"
     try:
-        response = requests.get(sitemap_url)
+        response = requests.get(SITEMAP_URL)
         response.raise_for_status()
         
         # Parse the XML
