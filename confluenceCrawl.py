@@ -23,7 +23,7 @@ supabase: Client = create_client(
 
 # Define authentication headers for Confluence
 AUTH_HEADERS = {
-    "Authorization": "Basic ZXNobWlsb3ZpY2hAZ283LmlvOkFUQVRUM3hGZkdGMDBNNTNKc3FJaFNDV1VUZFlUbDZtZWRPYmlLQkIxNGE0WnAyZk1vbFdoVm44M0g0dVZNQ1lpZW0wOUh3dzhVbEtidHZWclRuRndGTDFaSTd4ZUF5RE9ma2tUOC04bm9pVHhKbkFLakZaTEpycF9VSzloUE9aYUVxX2RWWU81bGtUQjRmNjR5Tk9ndUFkY3lfdHVEUk9lajdSZ0hBUnlsVXpxVVk2ajhxQ3NWaz05QTMyNTRERQ==",
+    "Authorization": os.getenv("CONFLUENCE_AUTH"),
     "Content-Type": "application/json"
 }
 
