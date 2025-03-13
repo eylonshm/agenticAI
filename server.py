@@ -49,6 +49,7 @@ class ChatRequest(BaseModel):
     message: str
     conversation_id: str = None
     message_history: List[Dict[str, Any]] = []
+    source_type: str = None  # Add source_type parameter with default None
 
 class ChatResponse(BaseModel):
     response: str
@@ -61,6 +62,11 @@ conversations = {}
 async def chat(request: ChatRequest):
     print('request', request)
     conversation_id = request.conversation_id or datetime.now().isoformat()
+    
+    # Determine the source based on request.source_type
+    docs_source = None
+    if request.source_type:
+        docs_source = f"{request.source_type}_docs"
     
     # Get or initialize conversation history
     if conversation_id not in conversations:
@@ -90,7 +96,8 @@ async def chat(request: ChatRequest):
         # Prepare dependencies
         deps = PydanticAIDeps(
             supabase=supabase,
-            openai_client=openai_client
+            openai_client=openai_client,
+            docs_source=docs_source  # Pass the docs_source to the agent
         )
         
         # Run the agent

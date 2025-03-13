@@ -15,7 +15,7 @@ from supabase import create_client, Client
 
 load_dotenv()
 
-SITEMAP_URL = "https://www.xml-sitemaps.com/download/tamagui.dev-2d537934d/sitemap.xml?view=1"
+SITEMAP_URL = "https://www.go7.io/sitemap.xml?view=1"
 
 # Initialize OpenAI and Supabase clients
 openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))

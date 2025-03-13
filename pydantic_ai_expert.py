@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import logfire
 import os
 
-from pydantic_ai import Agent, ModelRetry, RunContext
+from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.openai import OpenAIModel
 from openai import AsyncOpenAI
 from supabase import Client
@@ -23,10 +23,12 @@ logfire.configure(send_to_logfire='if-token-present')
 class PydanticAIDeps:
     supabase: Client
     openai_client: AsyncOpenAI
+    docs_source: str = None  # Add docs_source parameter with default None
 
 system_prompt = f"""
-You are an expert at {website_name} (with react native and expo) - a UI kit framework that you have access to all the documentation to,
-including examples, an API reference, and other resources to help you build {website_name} with react native ane expom and modify project configurations.
+You are an expert a go7 company expert and you should have access to all the documentation for go7 company,
+You should be able to help go7 employees with their questions about the company, their codebases, repositories, teams, etc.
+You should be able to provide them with the right URLs to the documentation and pages that can help them, provide code examples when needed.
 
 Your only job is to assist with this and you don't answer other questions besides describing what you are able to do.
 
@@ -36,6 +38,7 @@ When you first look at the documentation, always start with RAG.
 Then also always check the list of available documentation pages and retrieve the content of page(s) if it'll help.
 
 Always let the user know when you didn't find the answer in the documentation or the right URL - be honest.
+if you found relevent documentation, please try to provide the URLs to the user.
 """
 
 pydantic_ai_expert = Agent(
@@ -52,6 +55,7 @@ async def get_embedding(text: str, openai_client: AsyncOpenAI) -> List[float]:
             model="text-embedding-3-small",
             input=text
         )
+        print("response.data[0].embedding =>", response.data[0].embedding);
         return response.data[0].embedding
     except Exception as e:
         print(f"Error getting embedding: {e}")
@@ -73,17 +77,23 @@ async def retrieve_relevant_documentation(ctx: RunContext[PydanticAIDeps], user_
         # Get the embedding for the query
         query_embedding = await get_embedding(user_query, ctx.deps.openai_client)
         
+        # Prepare filter based on docs_source
+        filter_params = {}
+        if ctx.deps.docs_source:
+            filter_params = {'source': ctx.deps.docs_source}
+        
         # Query Supabase for relevant documents
         result = ctx.deps.supabase.rpc(
             'match_site_pages',
             {
                 'query_embedding': query_embedding,
                 'match_count': 5,
-                'filter': {'source': website_name + '_docs'}
+                'filter': filter_params
             }
         ).execute()
         
         if not result.data:
+            print("No relevant documentation found.")
             return "No relevant documentation found."
             
         # Format the results
@@ -95,7 +105,8 @@ async def retrieve_relevant_documentation(ctx: RunContext[PydanticAIDeps], user_
 {doc['content']}
 """
             formatted_chunks.append(chunk_text)
-            
+
+        print("formatted_chunks =>", formatted_chunks)
         # Join all chunks with a separator
         return "\n\n---\n\n".join(formatted_chunks)
         
@@ -106,18 +117,23 @@ async def retrieve_relevant_documentation(ctx: RunContext[PydanticAIDeps], user_
 @pydantic_ai_expert.tool
 async def list_documentation_pages(ctx: RunContext[PydanticAIDeps]) -> List[str]:
     f"""
-    Retrieve a list of all available {website_name} documentation pages.
+    Retrieve a list of all available documentation pages.
     
     Returns:
         List[str]: List of unique URLs for all documentation pages
     """
     try:
-        # Query Supabase for unique URLs where source is {website_name}_docs
-        result = ctx.deps.supabase.from_('site_pages') \
-            .select('url') \
-            .eq('metadata->>source', website_name + '_docs') \
-            .execute()
+        # Build the base query
+        query = ctx.deps.supabase.from_('site_pages').select('url')
         
+        # Add source filter if docs_source is specified
+        if ctx.deps.docs_source:
+            query = query.eq('metadata->>source', ctx.deps.docs_source)
+        
+        # Execute the query
+        result = query.execute()
+        
+        print("result2 =>", result)
         if not result.data:
             return []
             
@@ -142,13 +158,17 @@ async def get_page_content(ctx: RunContext[PydanticAIDeps], url: str) -> str:
         str: The complete page content with all chunks combined in order
     """
     try:
-        # Query Supabase for all chunks of this URL, ordered by chunk_number
-        result = ctx.deps.supabase.from_('site_pages') \
+        # Build the base query
+        query = ctx.deps.supabase.from_('site_pages') \
             .select('title, content, chunk_number') \
-            .eq('url', url) \
-            .eq('metadata->>source', website_name + '_docs') \
-            .order('chunk_number') \
-            .execute()
+            .eq('url', url)
+        
+        # Add source filter if docs_source is specified
+        if ctx.deps.docs_source:
+            query = query.eq('metadata->>source', ctx.deps.docs_source)
+        
+        # Execute the query with ordering
+        result = query.order('chunk_number').execute()
         
         if not result.data:
             return f"No content found for URL: {url}"
